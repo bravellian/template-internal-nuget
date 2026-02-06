@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Incursa internal library template.</Description>
+    <PackageTags>incursa;internal</PackageTags>
+  </PropertyGroup>
+</Project>
