@@ -1,7 +1,7 @@
 # Template Readiness Report
 
 ## Scope
-Repository scanned at `C:\src\incursa\repomanager` to assess reuse readiness as a private Incursa library template.
+Repository scanned at `C:\src\bravellian\repomanager` to assess reuse readiness as a private Bravellian library template.
 
 ## File Tree (top 2-3 levels)
 ```text
@@ -23,12 +23,12 @@ Repository scanned at `C:\src\incursa\repomanager` to assess reuse readiness as 
 │   ├── .gitignore
 │   └── package.json
 ├── src/
-│   └── Incursa.Template/
+│   └── Bravellian.Template/
 │       ├── Class1.cs
-│       └── Incursa.Template.csproj
+│       └── Bravellian.Template.csproj
 ├── tests/
-│   └── Incursa.Template.Tests/
-│       ├── Incursa.Template.Tests.csproj
+│   └── Bravellian.Template.Tests/
+│       ├── Bravellian.Template.Tests.csproj
 │       └── SanityTests.cs
 ├── .editorconfig
 ├── .gitattributes
@@ -39,7 +39,7 @@ Repository scanned at `C:\src\incursa\repomanager` to assess reuse readiness as 
 ├── Directory.Build.targets
 ├── Directory.Packages.props
 ├── global.json
-├── Incursa.Template.slnx
+├── Bravellian.Template.slnx
 ├── README.md
 ├── NOTICE.md
 └── *.props / scripts / metadata files
@@ -60,25 +60,25 @@ Repository scanned at `C:\src\incursa\repomanager` to assess reuse readiness as 
 - [x] `NOTICE.md` (present, likely intended equivalent)
 
 ## Placeholder Locations
-### Incursa.Template / template naming
-- `Incursa.Template.slnx`
-- `src/Incursa.Template/Incursa.Template.csproj`
-- `tests/Incursa.Template.Tests/Incursa.Template.Tests.csproj`
-- `src/Incursa.Template/Class1.cs` (namespace `Incursa.Template`)
-- `tests/Incursa.Template.Tests/SanityTests.cs` (namespace + type usage)
+### Bravellian.Template / template naming
+- `Bravellian.Template.slnx`
+- `src/Bravellian.Template/Bravellian.Template.csproj`
+- `tests/Bravellian.Template.Tests/Bravellian.Template.Tests.csproj`
+- `src/Bravellian.Template/Class1.cs` (namespace `Bravellian.Template`)
+- `tests/Bravellian.Template.Tests/SanityTests.cs` (namespace + type usage)
 - `README.md` build/test/pack commands
 - `llms.txt` solution and command examples
-- `Init-Repo.ps1` (`$old = "Incursa.Template"` used for rename flow)
+- `Init-Repo.ps1` (`$old = "Bravellian.Template"` used for rename flow)
 
 ### Class1 placeholder
-- `src/Incursa.Template/Class1.cs`
-- `tests/Incursa.Template.Tests/SanityTests.cs`
+- `src/Bravellian.Template/Class1.cs`
+- `tests/Bravellian.Template.Tests/SanityTests.cs`
 
 ### TODOs / obvious incomplete markers
 - No `TODO`/`FIXME` markers found in template project/workflow files.
 
 ## Obvious Inconsistencies
-- Skill docs reference a non-existent solution path `src/Incursa.slnx`:
+- Skill docs reference a non-existent solution path `src/Bravellian.slnx`:
   - `.codex/skills/dotnet-format-analyzers/SKILL.md`
   - `.codex/skills/dotnet-test-triage/SKILL.md`
 - `NOTICE` vs `NOTICE.md` naming mismatch relative to strict checklist expectations.

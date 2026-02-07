@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Bravellian internal library template.</Description>
+    <PackageTags>bravellian;internal</PackageTags>
+  </PropertyGroup>
+</Project>

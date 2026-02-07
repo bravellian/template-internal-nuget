@@ -1,6 +1,6 @@
-# Incursa .NET Library Template
+# Bravellian .NET Library Template
 
-This repository is a **template** for private Incursa .NET libraries.
+This repository is a **template** for private Bravellian .NET libraries.
 
 ## Layout
 
@@ -11,14 +11,14 @@ This repository is a **template** for private Incursa .NET libraries.
 ## Build
 
 ```bash
-dotnet restore Incursa.Template.slnx
-dotnet build Incursa.Template.slnx -c Release
+dotnet restore Bravellian.Template.slnx
+dotnet build Bravellian.Template.slnx -c Release
 ```
 
 ## Test
 
 ```bash
-dotnet test Incursa.Template.slnx -c Release
+dotnet test Bravellian.Template.slnx -c Release
 ```
 
 ## Pack (local)
