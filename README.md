@@ -18,7 +18,7 @@ dotnet build Bravellian.Template.slnx -c Release
 ## Test
 
 ```bash
-dotnet test Bravellian.Template.slnx -c Release
+dotnet test --solution Bravellian.Template.slnx -c Release
 ```
 
 ## Pack (local)
