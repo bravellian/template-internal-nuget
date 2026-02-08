@@ -166,7 +166,6 @@ jobs:
       # - SLEET_S3_BUCKET: bucket name
       # - SLEET_S3_ENDPOINT: S3 endpoint (R2 example: https://<accountid>.r2.cloudflarestorage.com)
       # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
-      # - AWS_REGION: use "auto" for Cloudflare R2 (override only if your client setup requires a fixed region).
       # Optional:
       # - SLEET_S3_PREFIX: folder prefix inside bucket (example: "nuget/")
       # NuGet client source URL becomes: https://<your-domain>/v3/index.json
@@ -176,7 +175,6 @@ jobs:
       SLEET_S3_PREFIX: ${{ secrets.SLEET_S3_PREFIX || 'feeds/main' }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION || 'auto' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -199,7 +197,7 @@ jobs:
         shell: pwsh
         run: |
           $missing = @()
-          foreach ($name in @("SLEET_S3_BUCKET", "SLEET_S3_ENDPOINT", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION")) {
+          foreach ($name in @("SLEET_S3_BUCKET", "SLEET_S3_ENDPOINT", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")) {
             if ([string]::IsNullOrWhiteSpace((Get-Item -Path "env:$name").Value)) { $missing += $name }
           }
 
@@ -232,7 +230,6 @@ jobs:
           $source = $json.sources[0]
           Set-OrAddProperty -Object $source -Name "name" -Value $env:SLEET_FEED_NAME
           Set-OrAddProperty -Object $source -Name "bucketName" -Value $env:SLEET_S3_BUCKET
-          Set-OrAddProperty -Object $source -Name "region" -Value $env:AWS_REGION
           $rawEndpoint = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
           $serviceUrl = $rawEndpoint
           $bucketSuffix = "/$($env:SLEET_S3_BUCKET)"
