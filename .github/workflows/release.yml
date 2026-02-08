@@ -11,6 +11,11 @@ on:
         required: false
         default: false
         type: boolean
+      forceUnlockSleet:
+        description: "Delete stale .feedlock object before Sleet push"
+        required: false
+        default: false
+        type: boolean
       sleetFeedName:
         description: "Sleet source name in sleet.json"
         required: false
@@ -195,6 +200,23 @@ jobs:
 
       - name: Install Sleet
         run: dotnet tool install --tool-path ./.tools sleet
+
+      - name: Optionally clear stale Sleet feed lock
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.forceUnlockSleet == 'true' }}
+        shell: pwsh
+        run: |
+          $serviceUrl = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $bucketSuffix = "/$($env:SLEET_S3_BUCKET)"
+          if ($serviceUrl.EndsWith($bucketSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $serviceUrl = $serviceUrl.Substring(0, $serviceUrl.Length - $bucketSuffix.Length)
+          }
+
+          $lockObject = "s3://$($env:SLEET_S3_BUCKET)/.feedlock"
+          Write-Host "Attempting stale lock cleanup for $lockObject via $serviceUrl"
+          & aws s3 rm $lockObject --endpoint-url $serviceUrl --only-show-errors
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "No stale lock removed (or lock not found). Continuing."
+          }
 
       - name: Validate publish_sleet configuration
         shell: pwsh
