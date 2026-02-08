@@ -233,7 +233,8 @@ jobs:
           Set-OrAddProperty -Object $source -Name "name" -Value $env:SLEET_FEED_NAME
           Set-OrAddProperty -Object $source -Name "bucketName" -Value $env:SLEET_S3_BUCKET
           Set-OrAddProperty -Object $source -Name "region" -Value $env:AWS_REGION
-          $serviceUrl = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $rawEndpoint = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $serviceUrl = $rawEndpoint
           $bucketSuffix = "/$($env:SLEET_S3_BUCKET)"
           if ($serviceUrl.EndsWith($bucketSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
             $serviceUrl = $serviceUrl.Substring(0, $serviceUrl.Length - $bucketSuffix.Length)
@@ -247,11 +248,19 @@ jobs:
           Set-OrAddProperty -Object $source -Name "secretAccessKey" -Value $env:AWS_SECRET_ACCESS_KEY
           if ($source.PSObject.Properties["profileName"]) { $source.PSObject.Properties.Remove("profileName") }
 
-          if (-not [string]::IsNullOrWhiteSpace($env:SLEET_S3_PREFIX)) {
-            Set-OrAddProperty -Object $source -Name "path" -Value "$($env:SLEET_S3_PREFIX.Trim('/'))/"
-          } elseif ($source.PSObject.Properties["path"]) {
-            $source.PSObject.Properties.Remove("path")
+          $pathBase = $rawEndpoint
+          if (-not $pathBase.EndsWith($bucketSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $pathBase = "$pathBase/$($env:SLEET_S3_BUCKET)"
           }
+          if (-not [string]::IsNullOrWhiteSpace($env:SLEET_S3_PREFIX)) {
+            $pathBase = "$pathBase/$($env:SLEET_S3_PREFIX.Trim('/'))"
+          }
+          $pathUrl = "$($pathBase.TrimEnd('/'))/"
+          [Uri]$parsedPathUrl = $null
+          if (-not [Uri]::TryCreate($pathUrl, [System.UriKind]::Absolute, [ref]$parsedPathUrl)) {
+            throw "Sleet path URL is not valid: '$pathUrl'."
+          }
+          Set-OrAddProperty -Object $source -Name "path" -Value $pathUrl
 
           $json | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding utf8NoBOM
 
