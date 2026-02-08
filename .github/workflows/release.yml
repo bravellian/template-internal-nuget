@@ -156,7 +156,7 @@ jobs:
   publish_sleet:
     needs: pack
     runs-on: ubuntu-latest
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SLEET_PUBLISH_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publishSleet == 'true')
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && vars.SLEET_PUBLISH_ENABLED == 'true'))) || (github.event_name == 'workflow_dispatch' && github.event.inputs.publishSleet == 'true')
     permissions:
       contents: read
     env:
@@ -246,3 +246,4 @@ jobs:
 
           # Sleet's duplicate-safe mode is --skip-existing (equivalent intent to --skip-duplicate).
           & "./.tools/sleet" push $pushDir -c $configPath -s $env:SLEET_FEED_NAME --skip-existing
+
