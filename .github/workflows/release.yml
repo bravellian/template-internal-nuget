@@ -210,21 +210,36 @@ jobs:
       - name: Publish .nupkg files to Sleet (Cloudflare R2/S3-compatible)
         shell: pwsh
         run: |
+          function Set-OrAddProperty {
+            param(
+              [Parameter(Mandatory = $true)] $Object,
+              [Parameter(Mandatory = $true)] [string] $Name,
+              [Parameter(Mandatory = $true)] $Value
+            )
+
+            $prop = $Object.PSObject.Properties[$Name]
+            if ($null -ne $prop) {
+              $prop.Value = $Value
+            } else {
+              $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value
+            }
+          }
+
           $configPath = Join-Path $env:RUNNER_TEMP "sleet.json"
           & "./.tools/sleet" createconfig --s3 --output $configPath
 
           $json = Get-Content -Path $configPath -Raw | ConvertFrom-Json
           $source = $json.sources[0]
-          $source.name = $env:SLEET_FEED_NAME
-          $source.bucketName = $env:SLEET_S3_BUCKET
-          $source.region = $env:AWS_REGION
-          $source.serviceURL = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
-          $source.accessKeyId = $env:AWS_ACCESS_KEY_ID
-          $source.secretAccessKey = $env:AWS_SECRET_ACCESS_KEY
+          Set-OrAddProperty -Object $source -Name "name" -Value $env:SLEET_FEED_NAME
+          Set-OrAddProperty -Object $source -Name "bucketName" -Value $env:SLEET_S3_BUCKET
+          Set-OrAddProperty -Object $source -Name "region" -Value $env:AWS_REGION
+          Set-OrAddProperty -Object $source -Name "serviceURL" -Value $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          Set-OrAddProperty -Object $source -Name "accessKeyId" -Value $env:AWS_ACCESS_KEY_ID
+          Set-OrAddProperty -Object $source -Name "secretAccessKey" -Value $env:AWS_SECRET_ACCESS_KEY
           if ($source.PSObject.Properties["profileName"]) { $source.PSObject.Properties.Remove("profileName") }
 
           if (-not [string]::IsNullOrWhiteSpace($env:SLEET_S3_PREFIX)) {
-            $source.path = "$($env:SLEET_S3_PREFIX.Trim('/'))/"
+            Set-OrAddProperty -Object $source -Name "path" -Value "$($env:SLEET_S3_PREFIX.Trim('/'))/"
           } elseif ($source.PSObject.Properties["path"]) {
             $source.PSObject.Properties.Remove("path")
           }
