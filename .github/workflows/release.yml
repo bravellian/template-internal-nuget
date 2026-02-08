@@ -240,6 +240,7 @@ jobs:
           if (-not [Uri]::TryCreate($serviceUrl, [System.UriKind]::Absolute, [ref]$parsedServiceUrl)) {
             throw "SLEET_S3_ENDPOINT is not a valid absolute URL: '$serviceUrl'."
           }
+          if ($source.PSObject.Properties["region"]) { $source.PSObject.Properties.Remove("region") }
           Set-OrAddProperty -Object $source -Name "serviceUrl" -Value $serviceUrl
           Set-OrAddProperty -Object $source -Name "accessKeyId" -Value $env:AWS_ACCESS_KEY_ID
           Set-OrAddProperty -Object $source -Name "secretAccessKey" -Value $env:AWS_SECRET_ACCESS_KEY
