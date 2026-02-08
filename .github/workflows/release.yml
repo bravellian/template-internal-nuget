@@ -176,11 +176,13 @@ jobs:
       # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
       # Optional:
       # - SLEET_S3_PREFIX: folder prefix inside bucket (example: "nuget/")
+      # - SLEET_DISABLE_PAYLOAD_SIGNING: set "true" for Cloudflare R2
       # NuGet client source URL becomes: https://<your-domain>/v3/index.json
       # Point your custom domain (CNAME/proxy) to the bucket-hosted feed content.
       SLEET_S3_ENDPOINT: ${{ secrets.SLEET_S3_ENDPOINT || 'https://89688018c76ecf8a6c9021cfa667a2ae.r2.cloudflarestorage.com' }}
       SLEET_S3_BUCKET: ${{ secrets.SLEET_S3_BUCKET || 'nuget-feed' }}
       SLEET_S3_PREFIX: ${{ secrets.SLEET_S3_PREFIX || 'feeds/main' }}
+      SLEET_DISABLE_PAYLOAD_SIGNING: ${{ secrets.SLEET_DISABLE_PAYLOAD_SIGNING || 'true' }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
@@ -266,7 +268,8 @@ jobs:
             throw "SLEET_S3_ENDPOINT is not a valid absolute URL: '$serviceUrl'."
           }
           if ($source.PSObject.Properties["region"]) { $source.PSObject.Properties.Remove("region") }
-          Set-OrAddProperty -Object $source -Name "serviceUrl" -Value $serviceUrl
+          if ($source.PSObject.Properties["serviceUrl"]) { $source.PSObject.Properties.Remove("serviceUrl") }
+          Set-OrAddProperty -Object $source -Name "serviceURL" -Value $serviceUrl
           Set-OrAddProperty -Object $source -Name "accessKeyId" -Value $env:AWS_ACCESS_KEY_ID
           Set-OrAddProperty -Object $source -Name "secretAccessKey" -Value $env:AWS_SECRET_ACCESS_KEY
           if ($source.PSObject.Properties["profileName"]) { $source.PSObject.Properties.Remove("profileName") }
@@ -284,6 +287,7 @@ jobs:
             throw "Sleet path URL is not valid: '$pathUrl'."
           }
           Set-OrAddProperty -Object $source -Name "path" -Value $pathUrl
+          Set-OrAddProperty -Object $source -Name "disablePayloadSigning" -Value ($env:SLEET_DISABLE_PAYLOAD_SIGNING -eq "true")
 
           $json | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding utf8NoBOM
 
