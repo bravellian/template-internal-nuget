@@ -233,7 +233,16 @@ jobs:
           Set-OrAddProperty -Object $source -Name "name" -Value $env:SLEET_FEED_NAME
           Set-OrAddProperty -Object $source -Name "bucketName" -Value $env:SLEET_S3_BUCKET
           Set-OrAddProperty -Object $source -Name "region" -Value $env:AWS_REGION
-          Set-OrAddProperty -Object $source -Name "serviceUrl" -Value $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $serviceUrl = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $bucketSuffix = "/$($env:SLEET_S3_BUCKET)"
+          if ($serviceUrl.EndsWith($bucketSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $serviceUrl = $serviceUrl.Substring(0, $serviceUrl.Length - $bucketSuffix.Length)
+          }
+          [Uri]$parsedServiceUrl = $null
+          if (-not [Uri]::TryCreate($serviceUrl, [System.UriKind]::Absolute, [ref]$parsedServiceUrl)) {
+            throw "SLEET_S3_ENDPOINT is not a valid absolute URL: '$serviceUrl'."
+          }
+          Set-OrAddProperty -Object $source -Name "serviceUrl" -Value $serviceUrl
           Set-OrAddProperty -Object $source -Name "accessKeyId" -Value $env:AWS_ACCESS_KEY_ID
           Set-OrAddProperty -Object $source -Name "secretAccessKey" -Value $env:AWS_SECRET_ACCESS_KEY
           if ($source.PSObject.Properties["profileName"]) { $source.PSObject.Properties.Remove("profileName") }
