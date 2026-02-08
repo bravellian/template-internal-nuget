@@ -2,8 +2,30 @@ name: Release (GitHub Packages)
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      publishSleet:
+        description: "Publish packages to the Sleet static feed"
+        required: false
+        default: false
+        type: boolean
+      sleetFeedName:
+        description: "Sleet source name in sleet.json"
+        required: false
+        default: "nuget"
+        type: string
+      githubPackagesOrg:
+        description: "Optional GitHub Packages org/owner override (defaults to repository owner)"
+        required: false
+        type: string
+      semVer:
+        description: "Optional semver override for manual runs"
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,8 +36,11 @@ permissions:
   packages: write
 
 jobs:
-  pack_and_push:
+  pack:
     runs-on: ubuntu-latest
+    outputs:
+      semVer: ${{ steps.version.outputs.semVer }}
+      hasSemVer: ${{ steps.version.outputs.hasSemVer }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,28 +69,180 @@ jobs:
           if (-not $sln) { throw "No solution file found at repo root." }
           "sln=$($sln.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Determine version from tag
+      - name: Determine version input
         id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart("v")
-          if (-not $version) { throw "Could not parse version from tag: $tag" }
-          "semVer=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $manualVersion = "${{ github.event.inputs.semVer }}"
+          $tagRef = "${{ github.ref }}"
+          $tagName = "${{ github.ref_name }}"
+          $version = ""
+
+          if ($manualVersion) {
+            $version = $manualVersion.Trim()
+          } elseif ($tagRef.StartsWith("refs/tags/v")) {
+            $version = $tagName.TrimStart("v")
+          }
+
+          if ($version) {
+            "semVer=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            "hasSemVer=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } else {
+            "semVer=" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            "hasSemVer=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
 
       - name: Restore
         run: dotnet restore ${{ steps.sln.outputs.sln }}
 
       - name: Build
-        run: dotnet build ${{ steps.sln.outputs.sln }} -c Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.semVer }}
+        shell: pwsh
+        run: |
+          if ("${{ steps.version.outputs.hasSemVer }}" -eq "true") {
+            dotnet build ${{ steps.sln.outputs.sln }} -c Release --no-restore -p:ContinuousIntegrationBuild=true -p:Version=${{ steps.version.outputs.semVer }}
+          } else {
+            dotnet build ${{ steps.sln.outputs.sln }} -c Release --no-restore -p:ContinuousIntegrationBuild=true
+          }
 
       - name: Test (exclude integration)
         run: dotnet test --solution ${{ steps.sln.outputs.sln }} -c Release --no-build --filter "Category!=Integration&RequiresDocker!=true"
 
       - name: Pack
-        run: pwsh -NoProfile -File ./scripts/pack.ps1 -Configuration Release -Version ${{ steps.version.outputs.semVer }} -SkipRestore -SkipBuild
+        shell: pwsh
+        run: |
+          if ("${{ steps.version.outputs.hasSemVer }}" -eq "true") {
+            pwsh -NoProfile -File ./scripts/pack.ps1 -Configuration Release -Version ${{ steps.version.outputs.semVer }} -SkipRestore -SkipBuild
+          } else {
+            pwsh -NoProfile -File ./scripts/pack.ps1 -Configuration Release -SkipRestore -SkipBuild
+          }
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs
+          if-no-files-found: error
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+            !artifacts/packages/*.symbols.nupkg
+
+  publish_github_packages:
+    needs: pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download NuGet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkgs
+          path: ./artifacts/publish
 
       - name: Push to GitHub Packages (NuGet)
         run: |
-          dotnet nuget push "./artifacts/packages/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
-          dotnet nuget push "./artifacts/packages/*.snupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+          set -euo pipefail
+          GH_PACKAGES_ORG="${{ github.event.inputs.githubPackagesOrg || github.repository_owner }}"
+          GH_PACKAGES_SOURCE="https://nuget.pkg.github.com/${GH_PACKAGES_ORG}/index.json"
+
+          find ./artifacts/publish -type f -name "*.nupkg" ! -name "*.symbols.nupkg" -print0 | while IFS= read -r -d '' pkg; do
+            dotnet nuget push "$pkg" --source "$GH_PACKAGES_SOURCE" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+          done
+
+          find ./artifacts/publish -type f -name "*.snupkg" -print0 | while IFS= read -r -d '' snupkg; do
+            dotnet nuget push "$snupkg" --source "$GH_PACKAGES_SOURCE" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+          done
+
+  publish_sleet:
+    needs: pack
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && (vars.SLEET_PUBLISH_ENABLED == 'true' || secrets.SLEET_PUBLISH_ENABLED == 'true')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.publishSleet == 'true')
+    permissions:
+      contents: read
+    env:
+      SLEET_FEED_NAME: ${{ github.event.inputs.sleetFeedName || 'nuget' }}
+      # Toggle for push-to-main automation.
+      SLEET_PUBLISH_ENABLED: ${{ vars.SLEET_PUBLISH_ENABLED || secrets.SLEET_PUBLISH_ENABLED }}
+      SLEET_PUBLISH_ENABLED_SECRET: ${{ secrets.SLEET_PUBLISH_ENABLED }}
+      # Cloudflare R2/S3-compatible required secrets:
+      # - SLEET_S3_BUCKET: bucket name
+      # - SLEET_S3_ENDPOINT: S3 endpoint (R2 example: https://<accountid>.r2.cloudflarestorage.com)
+      # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+      # - AWS_REGION: commonly "auto" (R2) or "us-east-1"
+      # Optional:
+      # - SLEET_S3_PREFIX: folder prefix inside bucket (example: "nuget/")
+      # NuGet client source URL becomes: https://<your-domain>/v3/index.json
+      # Point your custom domain (CNAME/proxy) to the bucket-hosted feed content.
+      SLEET_S3_ENDPOINT: ${{ secrets.SLEET_S3_ENDPOINT || 'https://89688018c76ecf8a6c9021cfa667a2ae.r2.cloudflarestorage.com' }}
+      SLEET_S3_BUCKET: ${{ secrets.SLEET_S3_BUCKET || 'nuget-feed' }}
+      SLEET_S3_PREFIX: ${{ secrets.SLEET_S3_PREFIX || 'feeds/main' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION || 'auto' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Download NuGet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nupkgs
+          path: ./artifacts/publish
+
+      - name: Install Sleet
+        run: dotnet tool install --tool-path ./.tools sleet
+
+      - name: Validate publish_sleet configuration
+        shell: pwsh
+        run: |
+          $missing = @()
+          foreach ($name in @("SLEET_S3_BUCKET", "SLEET_S3_ENDPOINT", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION")) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item -Path "env:$name").Value)) { $missing += $name }
+          }
+
+          if ($missing.Count -gt 0) {
+            throw "publish_sleet is enabled, but required secrets are missing: $($missing -join ', ')."
+          }
+
+      - name: Publish .nupkg files to Sleet (Cloudflare R2/S3-compatible)
+        shell: pwsh
+        run: |
+          $configPath = Join-Path $env:RUNNER_TEMP "sleet.json"
+          & "./.tools/sleet" createconfig --s3 --output $configPath
+
+          $json = Get-Content -Path $configPath -Raw | ConvertFrom-Json
+          $source = $json.sources[0]
+          $source.name = $env:SLEET_FEED_NAME
+          $source.bucketName = $env:SLEET_S3_BUCKET
+          $source.region = $env:AWS_REGION
+          $source.serviceURL = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
+          $source.accessKeyId = $env:AWS_ACCESS_KEY_ID
+          $source.secretAccessKey = $env:AWS_SECRET_ACCESS_KEY
+          if ($source.PSObject.Properties["profileName"]) { $source.PSObject.Properties.Remove("profileName") }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:SLEET_S3_PREFIX)) {
+            $source.path = "$($env:SLEET_S3_PREFIX.Trim('/'))/"
+          } elseif ($source.PSObject.Properties["path"]) {
+            $source.PSObject.Properties.Remove("path")
+          }
+
+          $json | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding utf8NoBOM
+
+          $pushDir = Join-Path $env:RUNNER_TEMP "sleet-packages"
+          New-Item -ItemType Directory -Path $pushDir -Force | Out-Null
+
+          Get-ChildItem -Path "./artifacts/publish" -Recurse -File -Filter "*.nupkg" |
+            Where-Object { -not $_.Name.EndsWith(".symbols.nupkg") } |
+            ForEach-Object { Copy-Item -Path $_.FullName -Destination $pushDir -Force }
+
+          # Intentionally not publishing .snupkg; add a separate symbols flow later if needed.
+          $packageCount = (Get-ChildItem -Path $pushDir -File -Filter "*.nupkg").Count
+          if ($packageCount -eq 0) { throw "No .nupkg files found to publish." }
+
+          # Sleet's duplicate-safe mode is --skip-existing (equivalent intent to --skip-duplicate).
+          & "./.tools/sleet" push $pushDir -c $configPath -s $env:SLEET_FEED_NAME --skip-existing
