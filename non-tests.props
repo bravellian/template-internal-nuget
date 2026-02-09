@@ -4,6 +4,7 @@
     <PackageId Condition="'$(PackageId)' == ''">$(MSBuildProjectName)</PackageId>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
     <Version Condition="'$(Version)' == '' AND '$(PackageVersion)' == ''">$(VersionPrefix)</Version>
+    <PackageIcon Condition="'$(PackageIcon)' == ''">nuget_icon.png</PackageIcon>
 
     <!-- Emit XML docs for consumers, but don't require doc comments everywhere. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -11,6 +12,10 @@
 
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(RepoRootPath)assets\nuget_icon.png" Pack="true" PackagePath="\" Visible="false" Link="nuget_icon.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Enables testing internals without making them public. -->
