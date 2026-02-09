@@ -26,3 +26,16 @@ Expected artifacts:
 - Tests live under `tests/` and should be fast and isolated.
 - Keep template assets generic; avoid app-specific paths or product-specific assumptions.
 - Prefer small, reviewable PRs with clear testing notes.
+
+## Workbench Baseline
+- Workbench repo config lives at `.workbench/config.json`.
+- Workbench authoring scaffold lives under `docs/` and `docs/70-work/`.
+- Workbench Codex skills live under `skills/`:
+  - `skills/workbench-docs`
+  - `skills/workbench-architecture`
+  - `skills/workbench-work-items`
+  - `skills/workbench-sync`
+  - `skills/workbench-github`
+- Daily automation workflows:
+  - `.github/workflows/workbench-sync-normalize.yml`
+  - `.github/workflows/workbench-item-issue-sync.yml`

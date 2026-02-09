@@ -52,3 +52,19 @@ Run a full template smoke test (copy -> init -> build -> test -> placeholder sca
 ```powershell
 pwsh -File scripts/self-test-template.ps1
 ```
+
+## Workbench Baseline
+
+This template includes a baseline Workbench setup:
+
+- Repo config: `.workbench/config.json`
+- Workbench docs/work-item scaffold: `docs/` (including `docs/70-work/*`)
+- Codex skills: `skills/workbench-*`
+- Daily automation:
+  - `.github/workflows/workbench-sync-normalize.yml`
+  - `.github/workflows/workbench-item-issue-sync.yml`
+
+Notes:
+
+- Drift-check excludes are configured in `.workbench/config.json` under `validation.linkExclude` and `validation.docExclude`.
+- Workbench workflows use `WORKBENCH_GITHUB_TOKEN` when available, otherwise `GITHUB_TOKEN`.
