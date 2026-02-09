@@ -257,6 +257,19 @@ jobs:
           $source = $json.sources[0]
           Set-OrAddProperty -Object $source -Name "name" -Value $env:SLEET_FEED_NAME
           Set-OrAddProperty -Object $source -Name "bucketName" -Value $env:SLEET_S3_BUCKET
+          Set-OrAddProperty -Object $source -Name "compress" -Value $false
+
+          # Normalize prefix and fail closed if it resolves to root.
+          $rawPrefix = $env:SLEET_S3_PREFIX
+          if ([string]::IsNullOrWhiteSpace($rawPrefix)) {
+            $rawPrefix = "feeds/main"
+          }
+          $normalizedPrefix = $rawPrefix.Trim().Trim("/")
+          if ([string]::IsNullOrWhiteSpace($normalizedPrefix)) {
+            throw "SLEET_S3_PREFIX resolves to an empty path. Use a non-root prefix such as 'feeds/main'."
+          }
+          Write-Host "Using SLEET_S3_PREFIX: '$normalizedPrefix'"
+
           $rawEndpoint = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
           $serviceUrl = $rawEndpoint
           $bucketSuffix = "/$($env:SLEET_S3_BUCKET)"
@@ -278,15 +291,14 @@ jobs:
           if (-not $pathBase.EndsWith($bucketSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
             $pathBase = "$pathBase/$($env:SLEET_S3_BUCKET)"
           }
-          if (-not [string]::IsNullOrWhiteSpace($env:SLEET_S3_PREFIX)) {
-            $pathBase = "$pathBase/$($env:SLEET_S3_PREFIX.Trim('/'))"
-          }
+          $pathBase = "$pathBase/$normalizedPrefix"
           $pathUrl = "$($pathBase.TrimEnd('/'))/"
           [Uri]$parsedPathUrl = $null
           if (-not [Uri]::TryCreate($pathUrl, [System.UriKind]::Absolute, [ref]$parsedPathUrl)) {
             throw "Sleet path URL is not valid: '$pathUrl'."
           }
           Set-OrAddProperty -Object $source -Name "path" -Value $pathUrl
+          Write-Host "Resolved Sleet source path: $pathUrl"
           Set-OrAddProperty -Object $source -Name "disablePayloadSigning" -Value ($env:SLEET_DISABLE_PAYLOAD_SIGNING -eq "true")
 
           $json | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding utf8NoBOM
