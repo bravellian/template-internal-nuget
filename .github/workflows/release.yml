@@ -181,7 +181,7 @@ jobs:
       # Point your custom domain (CNAME/proxy) to the bucket-hosted feed content.
       SLEET_S3_ENDPOINT: ${{ secrets.SLEET_S3_ENDPOINT || 'https://89688018c76ecf8a6c9021cfa667a2ae.r2.cloudflarestorage.com' }}
       SLEET_S3_BUCKET: ${{ secrets.SLEET_S3_BUCKET || 'nuget-feed' }}
-      SLEET_S3_PREFIX: ${{ secrets.SLEET_S3_PREFIX || 'feeds/main' }}
+      SLEET_S3_PREFIX: ${{ secrets.SLEET_S3_PREFIX }}
       SLEET_DISABLE_PAYLOAD_SIGNING: ${{ secrets.SLEET_DISABLE_PAYLOAD_SIGNING || 'true' }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -261,13 +261,7 @@ jobs:
 
           # Normalize prefix and fail closed if it resolves to root.
           $rawPrefix = $env:SLEET_S3_PREFIX
-          if ([string]::IsNullOrWhiteSpace($rawPrefix)) {
-            $rawPrefix = "feeds/main"
-          }
           $normalizedPrefix = $rawPrefix.Trim().Trim("/")
-          if ([string]::IsNullOrWhiteSpace($normalizedPrefix)) {
-            throw "SLEET_S3_PREFIX resolves to an empty path. Use a non-root prefix such as 'feeds/main'."
-          }
           Write-Host "Using SLEET_S3_PREFIX: '$normalizedPrefix'"
 
           $rawEndpoint = $env:SLEET_S3_ENDPOINT.TrimEnd("/")
