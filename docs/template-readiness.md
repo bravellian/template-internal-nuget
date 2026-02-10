@@ -1,3 +1,12 @@
+---
+workbench:
+  type: doc
+  workItems: []
+  codeRefs: []
+  pathHistory: []
+  path: /docs/template-readiness.md
+---
+
 # Template Readiness Report
 
 ## Scope
